@@ -1,0 +1,11 @@
+version: '3'
+services:
+  postgres:
+    image: jie123108/postgres-imgsmlr
+    ports:
+      - 5400:5432
+    environment:
+      - POSTGRES_PASSWORD=123456
+      - PGDATA=/data/docker/psql-imgsmlr-test
+    volumes:
+      - ./scripts/imgsmlr_init.sql:/docker-entrypoint-initdb.d/imgsmlr_init.sql
