@@ -87,7 +87,7 @@ async def async_http_get(url, headers=None, timeout=None):
             errmsg = 'timeout'
         else:
             errmsg = str(ex)
-        resp = httpx.Response(500, ext={"ex": ex})
+        resp = httpx.Response(500)
 
     if resp.status_code != 200:
         logger.info("request [%s] failed! status: %s, errmsg: %s" % (req_debug, resp.status_code, errmsg))

@@ -21,13 +21,23 @@
     }
     .searchBar .url {
       height: 30px;
-      width: 500px;
+      max-width: 800px;
       border-radius: 20px;
+      padding-left: 10px;
+      padding-right: 10px;
+    }
+    .searchBar .threshold {
+      height: 30px;
+      max-width: 50px;
+      border-radius: 10px;
       padding-left: 10px;
       padding-right: 10px;
     }
     .search-img {
       max-height: 80px;
+      border: 1px solid #1f1f1f;
+      border-left-width: thin;
+      box-shadow: 3px 3px 5px #736d6dbd;
     }
     .result-img {
       max-height: 360px;
@@ -42,21 +52,29 @@
       margin-left: 40px;
       margin-right: 40px;
     }
+    .result .prompt {
+      margin: 10px;
+      display: flex;
+      width: 100%;
+      font-weight: 500;
+      font-size: 24px;
+      color: #ff0000;
+      justify-content: center;
+    }
     .result .image {
       margin: 10px;
       border: 1px solid #1f1f1f;
       border-left-width: thin;
-      box-shadow: 3px 3px 5px #333333;
+      box-shadow: 3px 3px 5px #736d6dbd;
       display: flex;
       flex-direction: column;
-      #height: 400px;
     }
 
     .info {
       font-size: 13px;
       color: #e3e4ec;
       padding: 0px 10px 10px 10px;
-      background-color: #4f8aec;
+      background-color: #2353de;
       padding-top: 10px;
     }
 
@@ -70,9 +88,12 @@
     <span>Input a image URL:</span>
     <input type="url" id="url" name="url" v-model="url" size="80" class="url"/>
     <button v-on:click="searchImage">Search</button>
+    <button v-on:click="clearSearch">Clear</button>
+    <input type="text" id="threshold" name="threshold" v-model="threshold" size="15" class="threshold"/>
     <img v-bind:src="url" class="search-img"/>
   </div>
   <div class="result">
+    <div class="prompt" v-if="prompt"> {{prompt}} </div>
     <div v-for="image in images" :key="image.id" class="image">
         <img v-bind:src="image.url" class="result-img"/>
         <div class="info">
@@ -89,32 +110,53 @@
 var app5 = new Vue({
   el: '#app',
   data: {
-    url: 'http://192.168.31.100:8080/lisa_007.jpeg',
+    url: '',
     images: [],
+    prompt: '',
+    threshold: 0,
   },
   methods: {
     searchImage: async function () {
         const data = {
             url: this.url,
+            threshold: this.threshold,
         }
         const response = await axios.post('/imgsmlr/search', data);
         if(response.status === 200) {
             const data = response.data
             if (data && data.code == 200 && data.data) {
                 this.images = data.data.images
+                this.threshold = data.data.threshold
+                if (this.images.length > 0) {
+                  this.prompt = '';
+                } else {
+                  this.prompt = 'not found';
+                }
             } else{
                 this.images = []
+                this.prompt = 'not found'
             }
         } else {
-            console.log("search failed! response:", response)
+          this.prompt = "search failed! status:" + response.status
+          console.log("search failed! response:", response)
         }
+    },
+    clearSearch: async function () {
+      this.url = '';
+      this.images = [];
+      this.prompt = '';
     },
     setAndSearchImage: async function(url) {
         this.url = url
         await this.searchImage()
     },
     urlReplace: function(url) {
-      return url.replace(/https?:\/\/[^\/]+/gm, 'http://host')
+      url = url.replace(/https?:\/\/[^\/]+/gm, '')
+      const maxLength = 48
+      if (url.length > maxLength) {
+        url = url.substring(0, 10) + "..." + url.substring(url.length - (maxLength-15))
+      }
+      return url
     }
   }
 })

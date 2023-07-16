@@ -6,4 +6,4 @@ POSTGRESQL_URL = "postgresql+asyncpg://imgsmlr:imgsmlr-123456@127.0.0.1:5400/img
 SQL_DEBUG = False
 
 SEARCH_LIMIT = 50
-SEARCH_SIMR_THRESHOLD = 4.5
+SEARCH_SIMR_THRESHOLD = 1.5
