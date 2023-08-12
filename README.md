@@ -1,20 +1,21 @@
 
 # imgsmlr-server
 
-Image search service based on `imgsmlr` extension of `PostgreSQL`. Support image search by image.
 
-This is a sample application of `imgsmlr`. It can be extended as appropriate and applied to the following scenarios:
+Image search service based on the `imgsmlr` or `pgvector` extension of `PostgreSQL`. It supports image search by image.
 
-* Image and video work similarity detection
-* Illegal image filtering service.
-* Searching original video by video clip, video gif, video screenshot.
+Image feature extraction supports the `imgsmlr` extension algorithm and the `CLIP` algorithm.
+
+* Services provided include image and video similarity detection.
+* It offers an illegal image filtering service.
+* It enables searching for the original video based on video clips, video GIFs, and video screenshots.
 
 
 # Reference
 
 * [https://github.com/postgrespro/imgsmlr](https://github.com/postgrespro/imgsmlr)
 * [https://github.com/jie123108/libimgsmlr](https://github.com/jie123108/libimgsmlr)
-* 中文: [https://github.com/digoal/blog/blob/master/201607/20160726_01.md](#https://github.com/digoal/blog/blob/master/201607/20160726_01.md)
+* [Contrastive Language-Image Pre-Training](https://github.com/openai/CLIP)
 
 # Run
 
@@ -112,6 +113,13 @@ curl 'http://127.0.0.1:8140/imgsmlr/search' \
     "msg": "OK"
 }
 ````
+
+### Fine-tuning Similarity Threshold Parameters
+
+With regard to imgsmlr, a threshold setting in the span of 0 to 1 (or 0.9) tends to yield high precision. However, extending this range up to 2 can potentially boost the recall rate, albeit at the risk of generating a few false positives.
+As for utilizing the CLIP+pgvector(Cosine distance) model, a similarity threshold within the range of 0 to 0.1 is typically accurate. Marginally raising the threshold to between 0.1 to 0.2 may in turn improve recall, although it may slightly enhance the incidence of misrecalls as well.
+It is crucial to calibrate the actual threshold values according to your precise business requirements. This could be accomplished through iterative testing with your actual business data to strike the right balance between precision and recall.
+
 
 ### Test Page
 

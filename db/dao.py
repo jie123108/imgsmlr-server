@@ -4,15 +4,16 @@ import logging
 import config
 from copy import deepcopy
 from db.model import Image, signature_preprocess, pattern_preprocess
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, event
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from retry import retry
+
 
 
 # https://docs.sqlalchemy.org/en/14/dialects/postgresql.html
 SQL_URL = config.POSTGRESQL_URL
 sql_debug = config.SQL_DEBUG
-async_engine = create_async_engine(SQL_URL, echo=sql_debug)
+async_engine = create_async_engine(SQL_URL, echo=sql_debug, pool_size=10, max_overflow=10,  pool_recycle=1800)
 
 ## data access method
 
@@ -72,14 +73,39 @@ async def image_get_by_md5(md5):
 
 
 #### 使用pattern,signature搜索接口(操作符: <->)
-async def image_search(pattern, signature, limit=50, simr_threshold=4.0):
+async def image_search_by_imgsmlr(pattern, signature, limit=50, simr_threshold=4.0):
     async with AsyncSession(async_engine) as session:
         # 字段需要跟 ImageResult 对应上.
         SQL_FORMAT = """SELECT * FROM (SELECT id,url,data_id,md5,remark,meta, pattern <-> '%s' AS simr 
-FROM image ORDER BY signature <-> '%s' LIMIT %d) x WHERE x.simr < %d ORDER BY x.simr ASC LIMIT %d"""
+FROM image ORDER BY signature <-> '%s' LIMIT %d) x WHERE x.simr < %.3f ORDER BY x.simr ASC LIMIT %d"""
         sql = SQL_FORMAT % (
             pattern_preprocess(pattern), signature_preprocess(signature),
             limit * 3, simr_threshold, limit)
+        cursor = await session.execute(text(sql))
+        objs = []
+        for item in cursor:
+            obj = {
+                "id": item[0],
+                "url": item[1],
+                "dataId": item[2],
+                "md5": item[3],
+                "remark": item[4],
+                "meta": item[5],
+                "simr": round(item[6], 6),
+            }
+            objs.append(obj)
+        return objs
+
+async def image_search_by_clip(embedding, limit=50, simr_threshold=4.0):
+    async with AsyncSession(async_engine) as session:
+        if limit > 40:
+            await session.execute("SET hnsw.ef_search = %d" % (limit))
+        # 字段需要跟 ImageResult 对应上.
+        SQL_FORMAT = """SELECT * FROM (SELECT id,url,data_id,md5,remark,meta, round((clip <=> '%s')::numeric, 4) AS simr
+FROM image ORDER BY clip <=> '%s' LIMIT %d) x WHERE x.simr < %.3f"""
+        sql = SQL_FORMAT % ( embedding, embedding, limit, simr_threshold)
+
+        logging.warning("Searching SQL: %s" % sql.replace("\n", " "))
         cursor = await session.execute(text(sql))
         objs = []
         for item in cursor:
