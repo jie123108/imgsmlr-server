@@ -17,17 +17,21 @@
       border-bottom: 1px solid #1f1f1f;
     }
     .searchBar * {
-      margin: 10px;
+      margin: 2px;
     }
-    .searchBar .url {
+    .searchBar .base {
+      display: flex;
+      flex-direction: column;
+    }
+    .search .url {
       height: 30px;
       max-width: 800px;
       border-radius: 20px;
       padding-left: 10px;
       padding-right: 10px;
     }
-    .searchBar .threshold {
-      height: 30px;
+    .option .threshold {
+      height: 22px;
       max-width: 50px;
       border-radius: 10px;
       padding-left: 10px;
@@ -85,11 +89,22 @@
 <body>
 <div id="app">
   <div class="searchBar">
-    <span>Input a image URL:</span>
-    <input type="url" id="url" name="url" v-model="url" size="80" class="url"/>
-    <button v-on:click="searchImage">Search</button>
-    <button v-on:click="clearSearch">Clear</button>
-    <input type="text" id="threshold" name="threshold" v-model="threshold" size="15" class="threshold"/>
+    <div class="base">
+      <div class="search">
+        <span>Input a image URL:</span>
+        <input type="url" id="url" name="url" v-model="url" size="80" class="url"/>
+        <button v-on:click="searchImage">Search</button>
+        <button v-on:click="clearSearch">Clear</button>
+      </div>
+      <div class="option">
+        <span>Threshold:</span>
+        <input type="text" id="threshold" name="threshold" v-model="threshold" size="15" class="threshold"/>
+        <span>Match Type:</span>
+        <select name="matchType" id="matchType" v-model="matchType" >
+          <option value="imgsmlr">imgsmlr extension</option>
+        </select>
+      </div>
+    </div>
     <img v-bind:src="url" class="search-img"/>
   </div>
   <div class="result">
@@ -114,12 +129,14 @@ var app5 = new Vue({
     images: [],
     prompt: '',
     threshold: 0,
+    matchType: 'imgsmlr',
   },
   methods: {
     searchImage: async function () {
         const data = {
             url: this.url,
             threshold: this.threshold,
+            matchType: this.matchType,
         }
         const response = await axios.post('/imgsmlr/search', data);
         if(response.status === 200) {

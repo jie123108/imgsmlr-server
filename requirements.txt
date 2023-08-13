@@ -1,10 +1,10 @@
-pydantic==1.7.3
-fastapi==0.62.0
+pydantic==1.10.4
+fastapi==0.91.0
 loguru==0.5.3
-sqlalchemy==1.4.0b1
+sqlalchemy==2.0.17
+asyncpg==0.27.0
+psycopg2-binary==2.9.5
 retry==0.9.2
-asyncpg==0.21.0
-psycopg2-binary==2.8.6
 httpx
 uvicorn
 filetype
