@@ -99,6 +99,8 @@
       <div class="option">
         <span>Threshold:</span>
         <input type="text" id="threshold" name="threshold" v-model="threshold" size="15" class="threshold"/>
+        <span>Limit:</span>
+        <input type="text" id="limit" name="limit" v-model="limit" size="15" class="threshold"/>
         <span>Match Type:</span>
         <select name="matchType" id="matchType" v-model="matchType" >
           <option value="imgsmlr">imgsmlr extension</option>
@@ -129,6 +131,7 @@ var app5 = new Vue({
     images: [],
     prompt: '',
     threshold: 0,
+    limit: 30,
     matchType: 'imgsmlr',
   },
   methods: {
@@ -137,6 +140,7 @@ var app5 = new Vue({
             url: this.url,
             threshold: this.threshold,
             matchType: this.matchType,
+            limit: this.limit,
         }
         const response = await axios.post('/imgsmlr/search', data);
         if(response.status === 200) {

@@ -32,6 +32,7 @@ class SmlrMgrAddResponse(BaseModel):
 class SearchRequest(BaseModel):
     url: str
     threshold: Optional[float]
+    limit: Optional[int]
 
 class ImageResult(BaseModel):
     id: Optional[int]
@@ -136,7 +137,7 @@ async def search(req: SearchRequest):
     signature = pattern2signature(pattern)
     pattern2 = shuffle_pattern(pattern)
 
-    limit = config.SEARCH_LIMIT
+    limit = req.limit or config.SEARCH_LIMIT
     simr_threshold = req.threshold or config.SEARCH_SIMR_THRESHOLD
     images = await image_search(pattern2.as_array(), signature, limit=limit, simr_threshold=simr_threshold)
     data = SearchResponseData.parse_obj({"images": images, "threshold": simr_threshold})
