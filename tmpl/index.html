@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <title>Image Search</title>
 <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
-<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios@1.6.7/dist/axios.min.js"></script>
 </head>
 <style type="text/css">
     .searchBar {
@@ -104,6 +104,7 @@
         <span>Match Type:</span>
         <select name="matchType" id="matchType" v-model="matchType" >
           <option value="imgsmlr">imgsmlr extension</option>
+          <option value="clip">pgvector+CLIP</option>
         </select>
       </div>
     </div>
@@ -132,7 +133,7 @@ var app5 = new Vue({
     prompt: '',
     threshold: 0,
     limit: 30,
-    matchType: 'imgsmlr',
+    matchType: 'clip',
   },
   methods: {
     searchImage: async function () {

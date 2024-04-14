@@ -5,15 +5,29 @@ import hashlib
 import filetype
 import os.path
 import config
+import time
+import io
 from loguru import logger
 from typing import Optional, List
 from pydantic import BaseModel, validator
 from db.dao import image_insert, image_get_by_md5,\
-        image_search
+        image_search_by_imgsmlr, image_search_by_clip
 from utils.http_client import async_http_get
 from fastapi import FastAPI, APIRouter, HTTPException, Request
 from libimgsmlr import img2pattern, pattern2signature, shuffle_pattern
+from similarities import ClipModule
+
 from fastapi.responses import HTMLResponse
+from PIL import Image
+
+logger.info("------------------------- init clip model ---------------------")
+clipModel = ClipModule("OFA-Sys/chinese-clip-vit-base-patch16")
+logger.info("--------------------------init clip model finished ------------")
+
+def emb_result_wrapper(embedding):
+    # embedding = list(embedding[0])
+    embedding = [round(value, 6) for value in embedding]
+    return embedding
 
 class SmlrMgrAddRequest(BaseModel):
     url: str
@@ -31,6 +45,7 @@ class SmlrMgrAddResponse(BaseModel):
 
 class SearchRequest(BaseModel):
     url: str
+    matchType: Optional[str]
     threshold: Optional[float]
     limit: Optional[int]
 
@@ -71,14 +86,14 @@ async def mgr_add(req: SmlrMgrAddRequest):
         response.msg = "fetch url failed, status: %s" % (resp.status_code)
         return response
 
-    img = resp.content
-    kind = filetype.guess(img)
+    img_data = resp.content
+    kind = filetype.guess(img_data)
     if not kind:
         response.code = 400
         response.msg = "not a valid file"
         return response
 
-    md5 = hashlib.md5(img).hexdigest()
+    md5 = hashlib.md5(img_data).hexdigest()
     image = await image_get_by_md5(md5)
     if image:
         response.code = 400
@@ -86,7 +101,7 @@ async def mgr_add(req: SmlrMgrAddRequest):
         return response
 
     try:
-        pattern = img2pattern(img)
+        pattern = img2pattern(img_data)
     except ValueError as err:
         response.code = 400
         response.msg = str(err)
@@ -95,16 +110,22 @@ async def mgr_add(req: SmlrMgrAddRequest):
     signature = pattern2signature(pattern)
     pattern2 = shuffle_pattern(pattern)
 
-    image = {
-        "url": req.url,
-        "dataId": req.dataId,
-        "md5": md5,
-        "pattern": pattern2.as_array(),
-        "signature": signature,
-        "remark": req.remark,
-        "meta": req.meta,
-    }
-    await image_insert(image)
+    with io.BytesIO(img_data) as bio:
+        img = Image.open(bio)
+        clip = emb_result_wrapper(clipModel.encode(img, normalize_embeddings=True))
+
+        image = {
+            "url": req.url,
+            "dataId": req.dataId,
+            "md5": md5,
+            "pattern": pattern2.as_array(),
+            "signature": signature,
+            "phash": None,
+            "clip": clip,
+            "remark": req.remark,
+            "meta": req.meta,
+        }
+        await image_insert(image)
     response.code = 200
     response.msg = "OK"
 
@@ -120,26 +141,41 @@ async def search(req: SearchRequest):
         response.msg = "fetch url failed, status: %s" % (resp.status_code)
         return response
 
-    img = resp.content
-    kind = filetype.guess(img)
+    img_data = resp.content
+    kind = filetype.guess(img_data)
     if not kind:
         response.code = 400
         response.msg = "not a valid file"
         return response
-
-    try:
-        pattern = img2pattern(img)
-    except ValueError as err:
-        response.code = 400
-        response.msg = str(err)
-        return response
-
-    signature = pattern2signature(pattern)
-    pattern2 = shuffle_pattern(pattern)
-
     limit = req.limit or config.SEARCH_LIMIT
-    simr_threshold = req.threshold or config.SEARCH_SIMR_THRESHOLD
-    images = await image_search(pattern2.as_array(), signature, limit=limit, simr_threshold=simr_threshold)
+    matchType = req.matchType or 'clip'
+    ts = time.time()
+    if matchType == 'imgsmlr':
+        try:
+            pattern = img2pattern(img_data)
+        except ValueError as err:
+            response.code = 400
+            response.msg = str(err)
+            return response
+        signature = pattern2signature(pattern)
+        pattern2 = shuffle_pattern(pattern)
+        te_embedding = time.time()
+        simr_threshold = req.threshold or config.SEARCH_SIMR_THRESHOLD
+        images = await image_search_by_imgsmlr(pattern2.as_array(), signature, limit=limit, simr_threshold=simr_threshold)
+    elif matchType == 'clip':
+        with io.BytesIO(img_data) as bio:
+            img = Image.open(bio)
+            clip = emb_result_wrapper(clipModel.encode(img, normalize_embeddings=True))
+            te_embedding = time.time()
+            simr_threshold = req.threshold or config.SEARCH_SIMR_THRESHOLD
+            images = await image_search_by_clip(clip, limit=limit, simr_threshold=simr_threshold)
+    te = time.time()
+    duration = te - ts
+    duration_embedding = te_embedding - ts
+    duration_search = te - te_embedding
+    logger.info("img search by '%s' duration %.3f embedding: %.3f search: %.3f. '%s' found %d images" % (
+            matchType, duration, duration_embedding, duration_search, req.url, len(images)))
+
     data = SearchResponseData.parse_obj({"images": images, "threshold": simr_threshold})
     response.code = 200
     response.msg = "OK"
@@ -151,9 +187,14 @@ app = FastAPI()
 
 app.include_router(api_router, prefix="/imgsmlr")
 
-def main():
-    uvicorn.run(app, host=config.HOST, port=config.PORT)
 
+
+@app.on_event("startup")
+async def on_startup():
+    pass
+
+def main():
+    uvicorn.run(app, loop="uvloop", host=config.HOST, port=config.PORT)
 
 if __name__ == "__main__":
     main()

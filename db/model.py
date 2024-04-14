@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String, REAL, BIGINT, SMALLINT, INTEGER,
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 import sqlalchemy.types as types
+from pgvector.sqlalchemy import Vector
 import json
 
 def signature_preprocess(signature):
@@ -68,6 +69,8 @@ class Image(Base):
     md5 = Column("md5", TEXT)
     pattern = Column("pattern", Pattern)
     signature = Column(Signature)
+    phash = Column(Vector(512))
+    clip = Column(Vector(512))
     remark = Column(TEXT)
     dataId = Column("data_id", TEXT)
     meta = Column(JSONB)

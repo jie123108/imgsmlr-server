@@ -9,3 +9,6 @@ httpx
 uvicorn
 filetype
 libimgsmlr --global-option="build_ext"
+pgvector
+similarities
+torch

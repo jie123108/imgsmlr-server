@@ -92,5 +92,6 @@ async def async_http_get(url, headers=None, timeout=None):
     if resp.status_code != 200:
         logger.info("request [%s] failed! status: %s, errmsg: %s" % (req_debug, resp.status_code, errmsg))
     else:
-        logger.info("request [%s] success! status: %s" % (req_debug, resp.status_code))
+        pass
+        # logger.info("request [%s] success! status: %s" % (req_debug, resp.status_code))
     return resp, req_debug
