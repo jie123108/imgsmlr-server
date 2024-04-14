@@ -127,6 +127,8 @@ You can test the image search function by visiting `http://127.0.0.1:8140/imgsml
 
 ###### Screenshot of test page
 
+The test image library is approximately 70,000 images in size. The images mainly come from NSFW, but some test images downloaded personally have also been added.
+
 
 | ![./docs/imgs/demo-p1.png](./docs/imgs/demo-p1.png) |
 |:--:|
@@ -139,6 +141,10 @@ You can test the image search function by visiting `http://127.0.0.1:8140/imgsml
 | ![./docs/imgs/demo-p3.png](./docs/imgs/demo-p3.png) |
 |:--:|
 | *demo-p3* |
+
+| ![./docs/imgs/demo-p3.png](./docs/imgs/demo-p4.png) |
+|:--:|
+| *demo-p4* |
 
 ## LICENSE
 
