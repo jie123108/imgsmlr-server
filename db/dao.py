@@ -105,7 +105,7 @@ async def image_search_by_clip(embedding, limit=50, simr_threshold=4.0):
 FROM image ORDER BY clip <=> '%s' LIMIT %d) x WHERE x.simr < %.3f"""
         sql = SQL_FORMAT % ( embedding, embedding, limit, simr_threshold)
 
-        logging.warning("Searching SQL: %s" % sql.replace("\n", " "))
+        # logging.warning("Searching SQL: %s" % sql.replace("\n", " "))
         cursor = await session.execute(text(sql))
         objs = []
         for item in cursor:
