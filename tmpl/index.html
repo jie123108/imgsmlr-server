@@ -91,7 +91,7 @@
   <div class="searchBar">
     <div class="base">
       <div class="search">
-        <span>Input a image URL:</span>
+        <span>{{ urlLabel }}:</span>
         <input type="url" id="url" name="url" v-model="url" size="80" class="url"/>
         <button v-on:click="searchImage">Search</button>
         <button v-on:click="clearSearch">Clear</button>
@@ -105,17 +105,18 @@
         <select name="matchType" id="matchType" v-model="matchType" >
           <option value="imgsmlr">imgsmlr extension</option>
           <option value="clip">pgvector+CLIP</option>
+          <option value="cliptext">CLIP(text)</option>
         </select>
       </div>
     </div>
-    <img v-bind:src="url" class="search-img"/>
+    <img v-if="isImage" v-bind:src="url" class="search-img"/>
   </div>
   <div class="result">
     <div class="prompt" v-if="prompt"> {{prompt}} </div>
     <div v-for="image in images" :key="image.id" class="image">
         <img v-bind:src="image.url" class="result-img"/>
         <div class="info">
-            <div class="url">URL: {{urlReplace(image.url)}} <span><button v-on:click="setAndSearchImage(image.url)">Try it</button></span></div>
+            <div class="url">URL: {{urlReplace(image.url)}} <span><button v-if="isImage" v-on:click="setAndSearchImage(image.url)">Try it</button></span></div>
             <div class="md5">md5: {{image.md5}}</div>
             <div>Eucledian distance: {{image.simr}}</div>
         </div>
@@ -129,9 +130,11 @@ var app5 = new Vue({
   el: '#app',
   data: {
     url: '',
+    urlLabel: 'Input a image URL',
+    isImage: true,
     images: [],
     prompt: '',
-    threshold: 0,
+    threshold: 1,
     limit: 30,
     matchType: 'clip',
   },
@@ -179,6 +182,17 @@ var app5 = new Vue({
         url = url.substring(0, 10) + "..." + url.substring(url.length - (maxLength-15))
       }
       return url
+    }
+  },
+  watch: {
+    matchType(newVal){
+      if(newVal === 'cliptext'){
+        this.urlLabel = 'Input a text';
+        this.isImage = false;
+      }else{
+        this.urlLabel = 'Input a image URL';
+        this.isImage = true;
+      }
     }
   }
 })

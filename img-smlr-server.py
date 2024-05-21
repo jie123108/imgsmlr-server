@@ -135,20 +135,26 @@ async def mgr_add(req: SmlrMgrAddRequest):
 @api_router.post("/search", response_model=SearchResponse)
 async def search(req: SearchRequest):
     response = SearchResponse()
-    resp, req_debug = await async_http_get(req.url)
-    if resp.status_code != 200:
-        response.code = 400
-        response.msg = "fetch url failed, status: %s" % (resp.status_code)
-        return response
-
-    img_data = resp.content
-    kind = filetype.guess(img_data)
-    if not kind:
-        response.code = 400
-        response.msg = "not a valid file"
-        return response
     limit = req.limit or config.SEARCH_LIMIT
     matchType = req.matchType or 'clip'
+    img_data = None
+    search_data = None
+    if matchType == "cliptext":
+        search_data = req.url
+    else:
+        resp, req_debug = await async_http_get(req.url)
+        if resp.status_code != 200:
+            response.code = 400
+            response.msg = "fetch url failed, status: %s" % (resp.status_code)
+            return response
+
+        img_data = resp.content
+        kind = filetype.guess(img_data)
+        if not kind:
+            response.code = 400
+            response.msg = "not a valid file"
+            return response
+
     ts = time.time()
     if matchType == 'imgsmlr':
         try:
@@ -169,6 +175,11 @@ async def search(req: SearchRequest):
             te_embedding = time.time()
             simr_threshold = req.threshold or config.SEARCH_SIMR_THRESHOLD
             images = await image_search_by_clip(clip, limit=limit, simr_threshold=simr_threshold)
+    elif matchType == 'cliptext':
+        clip = emb_result_wrapper(clipModel.encode(search_data, normalize_embeddings=True))
+        te_embedding = time.time()
+        simr_threshold = req.threshold or config.SEARCH_SIMR_THRESHOLD
+        images = await image_search_by_clip(clip, limit=limit, simr_threshold=simr_threshold)
     te = time.time()
     duration = te - ts
     duration_embedding = te_embedding - ts
