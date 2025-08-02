@@ -1,7 +1,7 @@
 version: '3'
 services:
   postgres:
-    image: jie123108/postgres-imgsmlr
+    image: jie123108/postgres-imgsmlr:latest
     ports:
       - 5400:5432
     environment:
@@ -16,9 +16,11 @@ services:
     depends_on:
       - postgres
     environment:
-      - POSTGRESQL_URL=postgresql+asyncpg://imgsmlr:imgsmlr-123456@postgres:5400/imgsmlr
+      - POSTGRESQL_URL=postgresql+asyncpg://imgsmlr:imgsmlr-123456@postgres:5432/imgsmlr
       - SEARCH_LIMIT=3
       - SEARCH_SIMR_THRESHOLD=1.2
+      - HF_ENDPOINT=https://hf-mirror.com
+      - HF_HOME=/root/.cache/huggingface
     entrypoint: /opt/app-root/bin/uvicorn
     command: img-smlr-server:app --backlog 2048 --host=0.0.0.0 --port=8140
     volumes:

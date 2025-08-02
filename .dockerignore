@@ -1,0 +1,34 @@
+# 排除tests目录
+tests/
+
+# 排除git相关文件
+.git/
+.gitignore
+
+# 排除Python缓存文件
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# 排除IDE相关文件
+.vscode/
+.idea/
+
+# 排除文档和临时文件
+*.md
+*.txt
+!requirements.txt
+!README.md
+
+# 排除Docker相关文件
+Dockerfile
+.dockerignore
+docker-compose.yml
+build-docker.sh
+
+# 排除测试和开发相关文件
+test_*.py
+*_test.py 

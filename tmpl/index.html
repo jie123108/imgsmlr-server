@@ -30,12 +30,85 @@
       padding-left: 10px;
       padding-right: 10px;
     }
+    .option {
+      display: flex;
+      flex-direction: row;
+      height: 30px;
+      align-items: center;
+    }
     .option .threshold {
       height: 22px;
       max-width: 50px;
       border-radius: 10px;
       padding-left: 10px;
       padding-right: 10px;
+    }
+    .dataset-dropdown {
+      position: relative;
+      display: inline-block;
+      margin-left: 10px;
+    }
+    
+    .dataset-trigger {
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background-color: white;
+      cursor: pointer;
+      min-width: 200px;
+      justify-content: space-between;
+      padding: 4px 8px;
+    }
+    
+    .dataset-trigger:hover {
+      border-color: #007bff;
+    }
+    
+    .dataset-trigger .arrow {
+      margin-left: 8px;
+      font-size: 12px;
+      transition: transform 0.2s;
+    }
+    
+    .dataset-trigger.active .arrow {
+      transform: rotate(180deg);
+    }
+    
+    .dataset-dropdown-content {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background-color: white;
+      border: 1px solid #ccc;
+      border-top: none;
+      border-radius: 0 0 4px 4px;
+      max-height: 200px;
+      overflow-y: auto;
+      z-index: 1000;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .dataset-option {
+      display: flex;
+      align-items: center;
+      padding: 4px 6px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    
+    .dataset-option:hover {
+      background-color: #f5f5f5;
+    }
+    
+    .dataset-option.select-all {
+      border-bottom: 1px solid #eee;
+      font-weight: bold;
+    }
+    
+    .dataset-option input {
+      margin-right: 8px;
     }
     .search-img {
       max-height: 80px;
@@ -91,7 +164,7 @@
   <div class="searchBar">
     <div class="base">
       <div class="search">
-        <span>Input a image URL:</span>
+        <span>{{ urlLabel }}:</span>
         <input type="url" id="url" name="url" v-model="url" size="80" class="url"/>
         <button v-on:click="searchImage">Search</button>
         <button v-on:click="clearSearch">Clear</button>
@@ -99,25 +172,55 @@
       <div class="option">
         <span>Threshold:</span>
         <input type="text" id="threshold" name="threshold" v-model="threshold" size="15" class="threshold"/>
-        <span>Limit:</span>
+        <span style="margin-left: 10px;">Limit:</span>
         <input type="text" id="limit" name="limit" v-model="limit" size="15" class="threshold"/>
-        <span>Match Type:</span>
+        <span style="margin-left: 10px;">Match Type:</span>
         <select name="matchType" id="matchType" v-model="matchType" >
           <option value="imgsmlr">imgsmlr extension</option>
           <option value="clip">pgvector+CLIP</option>
+          <option value="siglip">pgvector+SigLip</option>
+          <option value="cliptext">CLIP(text)</option>
         </select>
+        <div style="margin-left: 10px;">
+          <span>Dataset:</span>
+          <div class="dataset-dropdown">
+            <div class="dataset-trigger" :class="{ active: dropdownOpen }" @click="toggleDropdown">
+              <span v-if="selectedDatasetIds.length === datasets.length">
+                全部数据集
+              </span>
+              <span v-else-if="selectedDatasetIds.length === 0">
+                请选择数据集
+              </span>
+              <span v-else>
+                已选择 {{ selectedDatasetIds.length }} 个数据集
+              </span>
+              <span class="arrow">▼</span>
+            </div>
+            <div v-show="dropdownOpen" class="dataset-dropdown-content">
+              <div class="dataset-option select-all" @click="toggleSelectAll">
+                <input type="checkbox" v-model="selectAllDatasets">
+                <label>全选</label>
+              </div>
+              <div v-for="dataset in datasets" :key="dataset.id" class="dataset-option" @click="toggleDataset(dataset.id)">
+                <input type="checkbox" :checked="selectedDatasetIds.includes(dataset.id)">
+                <label>{{ dataset.name }}</label>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
-    <img v-bind:src="url" class="search-img"/>
+    <img v-if="isImage" v-bind:src="url" class="search-img"/>
   </div>
   <div class="result">
     <div class="prompt" v-if="prompt"> {{prompt}} </div>
     <div v-for="image in images" :key="image.id" class="image">
         <img v-bind:src="image.url" class="result-img"/>
         <div class="info">
-            <div class="url">URL: {{urlReplace(image.url)}} <span><button v-on:click="setAndSearchImage(image.url)">Try it</button></span></div>
+            <div class="url">URL: {{urlReplace(image.url)}} <span><button v-if="isImage" v-on:click="setAndSearchImage(image.url)">Try it</button></span></div>
             <div class="md5">md5: {{image.md5}}</div>
-            <div>Eucledian distance: {{image.simr}}</div>
+            <div v-if="image.datasetId">Dataset: {{getDatasetName(image.datasetId)}}</div>
+            <div>Eucledian distance: {{image.simr}} <span><button v-on:click="setAndSearchImage(image.url)">Try it</button></span></div>
         </div>
     </div>
   </div>
@@ -129,11 +232,18 @@ var app5 = new Vue({
   el: '#app',
   data: {
     url: '',
+    urlLabel: 'Input a image URL',
+    isImage: true,
     images: [],
     prompt: '',
-    threshold: 0,
+    threshold: 1,
     limit: 30,
     matchType: 'clip',
+    datasets: [],
+    selectedDatasetIds: [],
+    selectAllDatasets: true,
+    dropdownOpen: false,
+    isInitializing: true,
   },
   methods: {
     searchImage: async function () {
@@ -142,13 +252,16 @@ var app5 = new Vue({
             threshold: this.threshold,
             matchType: this.matchType,
             limit: this.limit,
+            datasetIds: this.selectedDatasetIds.length > 0 ? this.selectedDatasetIds : null,
         }
-        const response = await axios.post('/imgsmlr/search', data);
+        const response = await axios.post('/imgsmlr/image/search', data);
         if(response.status === 200) {
             const data = response.data
             if (data && data.code == 200 && data.data) {
                 this.images = data.data.images
-                this.threshold = data.data.threshold
+                if (data.data.threshold && data.data.threshold > 0) {
+                  this.threshold = data.data.threshold
+                }
                 if (this.images.length > 0) {
                   this.prompt = '';
                 } else {
@@ -174,11 +287,87 @@ var app5 = new Vue({
     },
     urlReplace: function(url) {
       url = url.replace(/https?:\/\/[^\/]+/gm, '')
-      const maxLength = 48
+      const maxLength = 45
       if (url.length > maxLength) {
         url = url.substring(0, 10) + "..." + url.substring(url.length - (maxLength-15))
       }
       return url
+    },
+    loadDatasets: async function() {
+      try {
+        const response = await axios.get('/imgsmlr/dataset/list');
+        if (response.status === 200 && response.data.code === 200) {
+          this.datasets = response.data.data.datasets || [];
+          // 默认选中所有数据集
+          this.selectedDatasetIds = this.datasets.map(ds => ds.id);
+        } else {
+          console.error('Failed to load datasets:', response.data);
+        }
+      } catch (error) {
+        console.error('Error loading datasets:', error);
+      }
+    },
+    toggleSelectAll: function() {
+      this.selectAllDatasets = !this.selectAllDatasets;
+      if (this.selectAllDatasets) {
+        this.selectedDatasetIds = this.datasets.map(ds => ds.id);
+      } else {
+        this.selectedDatasetIds = [];
+      }
+    },
+    toggleDropdown: function() {
+      this.dropdownOpen = !this.dropdownOpen;
+    },
+    toggleDataset: function(datasetId) {
+      const index = this.selectedDatasetIds.indexOf(datasetId);
+      if (index > -1) {
+        this.selectedDatasetIds.splice(index, 1);
+      } else {
+        this.selectedDatasetIds.push(datasetId);
+      }
+      this.selectAllDatasets = this.selectedDatasetIds.length === this.datasets.length;
+    },
+    handleClickOutside: function(event) {
+      const dropdown = this.$el.querySelector('.dataset-dropdown');
+      if (dropdown && !dropdown.contains(event.target)) {
+        this.dropdownOpen = false;
+      }
+    },
+    getDatasetName: function(datasetId) {
+      const dataset = this.datasets.find(ds => ds.id === datasetId);
+      return dataset ? dataset.name : 'Unknown';
+    }
+  },
+  async mounted() {
+    await this.loadDatasets();
+    this.isInitializing = false;
+    document.addEventListener('click', this.handleClickOutside);
+  },
+  beforeDestroy() {
+    document.removeEventListener('click', this.handleClickOutside);
+  },
+  watch: {
+    matchType(newVal){
+      if(newVal === 'cliptext'){
+        this.urlLabel = 'Input a text';
+        this.isImage = false;
+      }else{
+        this.urlLabel = 'Input a image URL';
+        this.isImage = true;
+      }
+    },
+    selectedDatasetIds: {
+      handler: function(newVal) {
+        this.selectAllDatasets = newVal.length === this.datasets.length && newVal.length > 0;
+      },
+      deep: true
+    },
+    selectAllDatasets: function(newVal) {
+      if (newVal && this.datasets.length > 0) {
+        this.selectedDatasetIds = this.datasets.map(ds => ds.id);
+      } else if (!newVal) {
+        this.selectedDatasetIds = [];
+      }
     }
   }
 })
